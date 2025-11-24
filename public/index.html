@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Совместное рисование</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background: white;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .color-picker {
+            margin: 10px 0;
+        }
+        
+        .color-option {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            margin: 0 5px;
+            border: 2px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .users-count {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Совместное рисование</h1>
+        
+        <div class="controls">
+            <div class="color-picker">
+                <div class="color-option" style="background: black;" data-color="black"></div>
+                <div class="color-option" style="background: red;" data-color="red"></div>
+                <div class="color-option" style="background: blue;" data-color="blue"></div>
+                <div class="color-option" style="background: green;" data-color="green"></div>
+                <div class="color-option" style="background: yellow;" data-color="yellow"></div>
+            </div>
+            <button id="clearBtn">Очистить холст</button>
+            <button id="eraserBtn">Ластик</button>
+        </div>
+        
+        <canvas id="drawingCanvas" width="800" height="500"></canvas>
+        
+        <div class="users-count">
+            Пользователей онлайн: <span id="usersCount">1</span>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const clearBtn = document.getElementById('clearBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const colorOptions = document.querySelectorAll('.color-option');
+        const usersCount = document.getElementById('usersCount');
+
+        // Подключаемся к серверу
+        const socket = io();
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = 'black';
+        let isEraser = false;
+
+        // Функция для рисования линии
+        function drawLine(x1, y1, x2, y2, color, width = 5) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // Обработчики событий мыши
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            
+            const color = isEraser ? 'white' : currentColor;
+            const lineWidth = isEraser ? 20 : 5;
+            
+            // Рисуем локально
+            drawLine(lastX, lastY, e.offsetX, e.offsetY, color, lineWidth);
+            
+            // Отправляем данные на сервер
+            socket.emit('drawing', {
+                x1: lastX,
+                y1: lastY,
+                x2: e.offsetX,
+                y2: e.offsetY,
+                color: color,
+                width: lineWidth
+            });
+            
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // Обработчики кнопок
+        clearBtn.addEventListener('click', () => {
+            socket.emit('clear-canvas');
+        });
+
+        eraserBtn.addEventListener('click', () => {
+            isEraser = !isEraser;
+            eraserBtn.style.background = isEraser ? '#28a745' : '#007bff';
+        });
+
+        // Выбор цвета
+        colorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                currentColor = option.getAttribute('data-color');
+                isEraser = false;
+                eraserBtn.style.background = '#007bff';
+            });
+        });
+
+        // Обработчики событий от сервера
+        socket.on('drawing', (data) => {
+            drawLine(data.x1, data.y1, data.x2, data.y2, data.color, data.width);
+        });
+
+        socket.on('clear-canvas', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        socket.on('load-drawing', (drawingData) => {
+            // Загружаем существующий рисунок
+            drawingData.forEach(data => {
+                drawLine(data.x1, data.y1, data.x2, data.y2, data.color, data.width);
+            });
+        });
+
+        // В клиентском скрипте добавьте этот обработчик:
+        socket.on('users-count', (count) => {
+            usersCount.textContent = count;
+            console.log('Пользователей онлайн:', count); // Для отладки
+        });
+
+        // Также добавьте при загрузке страницы:
+        console.log('Подключение к серверу...');
+    </script>
+</body>
+</html>
