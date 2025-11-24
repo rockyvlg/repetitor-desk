@@ -1,0 +1,4 @@
+token
+.env
+*.key
+*.pem
