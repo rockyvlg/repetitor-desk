@@ -3,35 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Совместное рисование с именами и цветами</title>
+    <title>Совместное рисование - Мобильная версия</title>
     <style>
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+        
         body {
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 100%;
             margin: 0 auto;
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
         .main-content {
             display: flex;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .main-content {
+                flex-direction: row;
+            }
+            
+            .users-panel {
+                width: 300px;
+            }
         }
         
         .drawing-area {
             flex: 1;
+            min-width: 0;
         }
         
         .users-panel {
-            width: 300px;
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
@@ -39,38 +63,81 @@
         }
         
         .controls {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center;
         }
         
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        
         button {
-            padding: 10px 15px;
-            margin: 0 5px;
+            padding: 12px 16px;
+            margin: 2px;
             background: #007bff;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
+            min-height: 44px;
+            flex: 1;
+            min-width: 80px;
+            transition: all 0.2s;
+        }
+        
+        button:active {
+            transform: scale(0.95);
         }
         
         .save-btn {
             background: #28a745;
         }
         
-        .save-btn:hover {
-            background: #218838;
-        }
-        
         .eraser-active {
             background: #dc3545 !important;
         }
         
+        .brush-active {
+            background: #17a2b8 !important;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background: white;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+            touch-action: none;
+        }
+        
+        @media (max-width: 767px) {
+            canvas {
+                width: 100%;
+                height: 400px;
+            }
+        }
+        
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
         .color-option {
-            display: inline-block;
-            width: 25px;
-            height: 25px;
-            margin: 2px;
+            width: 35px;
+            height: 35px;
             border: 2px solid #ddd;
             border-radius: 50%;
             cursor: pointer;
@@ -136,12 +203,14 @@
         }
         
         .name-input {
-            padding: 8px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 8px;
             margin: 10px 0;
             width: 100%;
             box-sizing: border-box;
+            font-size: 16px;
+            min-height: 44px;
         }
         
         .my-info {
@@ -188,27 +257,66 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 1000;
             animation: slideIn 0.3s ease;
+            max-width: 300px;
         }
         
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+        
+        .mobile-hint {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        @media (max-width: 767px) {
+            .mobile-hint {
+                display: block;
+            }
+        }
+        
+        .tool-indicator {
+            text-align: center;
+            margin: 10px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎨 Совместное рисование с именами участников</h1>
+        <h1>🎨 Совместное рисование 📱</h1>
         
         <div class="main-content">
             <div class="drawing-area">
                 <div class="controls">
-                    <button id="clearBtn">🧹 Очистить</button>
-                    <button id="eraserBtn">🧽 Ластик</button>
-                    <button id="saveBtn" class="save-btn">💾 Сохранить скриншот</button>
+                    <div class="tool-indicator" id="toolIndicator">
+                        Инструмент: <span id="currentTool">Кисть</span>
+                    </div>
+                    
+                    <div class="controls-row">
+                        <button id="clearBtn">🧹 Очистить</button>
+                        <button id="brushBtn" class="brush-active">🎨 Кисть</button>
+                        <button id="eraserBtn">🧽 Ластик</button>
+                    </div>
+                    
+                    <div class="controls-row">
+                        <button id="saveBtn" class="save-btn">💾 Сохранить</button>
+                    </div>
+                    
+                    <div class="color-palette" id="colorPalette">
+                        <!-- Цвета будут добавлены через JavaScript -->
+                    </div>
                 </div>
                 
                 <canvas id="drawingCanvas" width="800" height="500"></canvas>
+                <div class="mobile-hint">💡 Для рисования используйте касание</div>
                 
                 <div class="screenshots-panel">
                     <h3>📸 Сохраненные скриншоты</h3>
@@ -219,7 +327,6 @@
             </div>
             
             <div class="users-panel">
-                <!-- Информация о текущем пользователе -->
                 <div class="my-info" id="myInfo">
                     <h3>👤 Мой профиль</h3>
                     <input type="text" class="name-input" id="nameInput" placeholder="Введите ваше имя" maxlength="20">
@@ -229,15 +336,6 @@
                     </div>
                 </div>
                 
-                <!-- Палитра цветов -->
-                <div style="margin-bottom: 15px;">
-                    <h4>🎨 Выберите цвет:</h4>
-                    <div id="colorPalette">
-                        <!-- Цвета будут добавлены через JavaScript -->
-                    </div>
-                </div>
-                
-                <!-- Список участников -->
                 <h3>👥 Участники (<span id="usersCount">1</span>)</h3>
                 <div class="user-list" id="userList"></div>
             </div>
@@ -249,6 +347,7 @@
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
         const clearBtn = document.getElementById('clearBtn');
+        const brushBtn = document.getElementById('brushBtn');
         const eraserBtn = document.getElementById('eraserBtn');
         const saveBtn = document.getElementById('saveBtn');
         const nameInput = document.getElementById('nameInput');
@@ -259,9 +358,12 @@
         const myColorText = document.getElementById('myColorText');
         const myStrokesCount = document.getElementById('myStrokesCount');
         const screenshotsList = document.getElementById('screenshotsList');
+        const toolIndicator = document.getElementById('toolIndicator');
+        const currentTool = document.getElementById('currentTool');
 
         const socket = io();
 
+        // Переменные для управления рисованием
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
@@ -277,6 +379,24 @@
             '#F8C471', '#82E0AA', '#F1948A', '#D7BDE2', '#A3E4D7'
         ];
         let userStrokes = {};
+
+        // Адаптация размера canvas для мобильных устройств
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth - 40; // учитываем padding
+            
+            if (containerWidth < 800) {
+                canvas.style.width = containerWidth + 'px';
+                canvas.style.height = (containerWidth * 0.625) + 'px'; // соотношение 800x500
+            } else {
+                canvas.style.width = '800px';
+                canvas.style.height = '500px';
+            }
+        }
+
+        // Инициализация размеров
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
@@ -311,22 +431,16 @@
             ctx.stroke();
         }
 
-        // Функция для полной перерисовки холста
         function redrawCanvas(drawingData) {
-            // Очищаем холст
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Белый фон
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Перерисовываем все линии
             drawingData.forEach(data => {
                 drawLine(data.x1, data.y1, data.x2, data.y2, data.color, data.width);
             });
         }
 
-        // Обновление палитры цветов
         function updateColorPalette() {
             colorPalette.innerHTML = '';
             
@@ -352,6 +466,8 @@
                     colorOption.addEventListener('click', () => {
                         if (color !== currentColor) {
                             socket.emit('change-color', color);
+                            // При выборе цвета автоматически включаем кисть
+                            setBrushMode();
                         }
                     });
                 }
@@ -360,42 +476,111 @@
             });
         }
 
-        canvas.addEventListener('mousedown', (e) => {
-            isDrawing = true;
-            [lastX, lastY] = [e.offsetX, e.offsetY];
-        });
+        function setBrushMode() {
+            isEraser = false;
+            brushBtn.classList.add('brush-active');
+            eraserBtn.classList.remove('eraser-active');
+            currentTool.textContent = 'Кисть';
+            canvas.style.cursor = 'crosshair';
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function setEraserMode() {
+            isEraser = true;
+            eraserBtn.classList.add('eraser-active');
+            brushBtn.classList.remove('brush-active');
+            currentTool.textContent = 'Ластик';
+            canvas.style.cursor = 'crosshair';
+        }
+
+        // Функция для получения координат касания/мыши
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.type.includes('touch')) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Обработчики для мыши
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const coords = getCoordinates(e);
+            [lastX, lastY] = [coords.x, coords.y];
+        }
+
+        function draw(e) {
+            e.preventDefault();
             if (!isDrawing) return;
             
+            const coords = getCoordinates(e);
+            const { x, y } = coords;
+            
             if (isEraser) {
-                eraseLine(lastX, lastY, e.offsetX, e.offsetY, 20);
+                eraseLine(lastX, lastY, x, y, 20);
                 socket.emit('erasing', {
                     x1: lastX,
                     y1: lastY,
-                    x2: e.offsetX,
-                    y2: e.offsetY,
+                    x2: x,
+                    y2: y,
                     width: 20
                 });
             } else {
-                drawLine(lastX, lastY, e.offsetX, e.offsetY, currentColor, 5);
+                drawLine(lastX, lastY, x, y, currentColor, 5);
                 socket.emit('drawing', {
                     x1: lastX,
                     y1: lastY,
-                    x2: e.offsetX,
-                    y2: e.offsetY,
+                    x2: x,
+                    y2: y,
                     width: 5
                 });
                 myStrokes++;
                 myStrokesCount.textContent = myStrokes;
             }
             
-            [lastX, lastY] = [e.offsetX, e.offsetY];
+            [lastX, lastY] = [x, y];
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        // Добавляем обработчики для мыши
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Добавляем обработчики для тач-устройств
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+
+        // Предотвращаем скролл при касании canvas
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
         });
 
-        canvas.addEventListener('mouseup', () => isDrawing = false);
-        canvas.addEventListener('mouseout', () => isDrawing = false);
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        });
 
+        // Обработчики кнопок
         clearBtn.addEventListener('click', () => {
             socket.emit('clear-canvas');
             myStrokes = 0;
@@ -403,16 +588,8 @@
             userStrokes = {};
         });
 
-        eraserBtn.addEventListener('click', () => {
-            isEraser = !isEraser;
-            if (isEraser) {
-                eraserBtn.classList.add('eraser-active');
-                eraserBtn.textContent = '🎨 Кисть';
-            } else {
-                eraserBtn.classList.remove('eraser-active');
-                eraserBtn.textContent = '🧽 Ластик';
-            }
-        });
+        brushBtn.addEventListener('click', setBrushMode);
+        eraserBtn.addEventListener('click', setEraserMode);
 
         saveBtn.addEventListener('click', () => {
             saveBtn.disabled = true;
@@ -421,7 +598,7 @@
             
             setTimeout(() => {
                 saveBtn.disabled = false;
-                saveBtn.textContent = '💾 Сохранить скриншот';
+                saveBtn.textContent = '💾 Сохранить';
             }, 2000);
         });
 
@@ -447,13 +624,11 @@
         socket.on('drawing', (data) => {
             drawLine(data.x1, data.y1, data.x2, data.y2, data.color, data.width);
             
-            // Обновляем счетчик штрихов для пользователя
             if (!userStrokes[data.userId]) {
                 userStrokes[data.userId] = 0;
             }
             userStrokes[data.userId]++;
             
-            // Подсвечиваем пользователя в списке
             const userElement = document.querySelector(`[data-user-id="${data.userId}"]`);
             if (userElement) {
                 userElement.classList.add('highlight-user');
@@ -463,15 +638,9 @@
             }
         });
 
-        socket.on('erasing', () => {
-            // При стирании запрашиваем полную перерисовку
-            socket.emit('request-redraw');
-        });
-
         socket.on('redraw-canvas', (drawingData) => {
             redrawCanvas(drawingData);
             
-            // Пересчитываем штрихи
             userStrokes = {};
             drawingData.forEach(data => {
                 if (!userStrokes[data.userId]) {
@@ -480,7 +649,6 @@
                 userStrokes[data.userId]++;
             });
             
-            // Обновляем счетчик своих штрихов
             myStrokes = userStrokes[myUserId] || 0;
             myStrokesCount.textContent = myStrokes;
         });
@@ -497,7 +665,6 @@
         socket.on('load-drawing', (drawingData) => {
             redrawCanvas(drawingData);
             
-            // Считаем штрихи при загрузке
             userStrokes = {};
             drawingData.forEach(data => {
                 if (!userStrokes[data.userId]) {
@@ -551,11 +718,14 @@
         });
 
         socket.on('screenshot-saved', (screenshot) => {
-            savedScreenshots.unshift(screenshot);
-            updateScreenshotsList();
-            
-            const userName = screenshot.savedBy === myUserId ? 'Вы' : 'Кто-то';
-            showNotification(`${userName} сохранили скриншот!`);
+            if (screenshot.message) {
+                showNotification(screenshot.message, 'info');
+            } else {
+                savedScreenshots.unshift(screenshot);
+                updateScreenshotsList();
+                const userName = screenshot.savedBy === myUserId ? 'Вы' : 'Кто-то';
+                showNotification(`${userName} сохранили скриншот!`);
+            }
         });
 
         socket.on('screenshot-error', (message) => {
@@ -591,9 +761,12 @@
             myUserId = socket.id;
         });
 
-        // Инициализация холста
+        // Инициализация
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Устанавливаем начальный режим
+        setBrushMode();
     </script>
 </body>
 </html>
