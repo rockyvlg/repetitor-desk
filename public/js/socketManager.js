@@ -31,14 +31,13 @@ class SocketManager {
             'user-data': 'userData',
             'drawing': 'drawing',
             'redraw-canvas': 'redrawCanvas',
-            'clear-canvas': 'clearCanvas',
+            'clear-canvas': 'clearCanvas', // ДОБАВЛЕНО: обработчик очистки
             'load-drawing': 'loadDrawing',
             'users-update': 'usersUpdate',
             'available-colors-update': 'availableColorsUpdate',
             'color-error': 'colorError',
             'screenshot-saved': 'screenshotSaved',
             'screenshot-error': 'screenshotError',
-            'user-microphone-toggle': 'userMicrophoneToggle',
             'chat-message': 'chatMessage',
             'chat-update': 'chatUpdate',
             'canvas-switched': 'canvasSwitched'
@@ -52,6 +51,7 @@ class SocketManager {
         });
     }
     
+   
     on(event, handler) {
         if (!this.eventHandlers.has(event)) {
             this.eventHandlers.set(event, []);
@@ -83,7 +83,7 @@ class SocketManager {
     
     send(event, data) {
         if (this.socket && this.socket.connected) {
-            console.log(`Отправка события: ${event}`, data);
+            console.log(`Отправка события: ${event}`, data || 'без данных');
             this.socket.emit(event, data);
         } else {
             console.warn('Сокет не подключен, невозможно отправить:', event);

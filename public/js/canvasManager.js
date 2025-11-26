@@ -15,11 +15,8 @@ class CanvasManager {
         this.userStrokes = {};
         this.currentColor = '#FF6B6B';
         
-        // Для временного хранения данных фигуры
         this.tempShapeData = null;
         this.isDrawingShape = false;
-        
-        // ДЛЯ ИСПРАВЛЕНИЯ: храним локальную копию drawingData
         this.localDrawingData = [];
     }
     
@@ -32,21 +29,51 @@ class CanvasManager {
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
         
-        // Белый фон по умолчанию
         this.ctx.fillStyle = 'white';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.socketManager.on('drawing', (data) => this.handleDrawing(data));
         this.socketManager.on('redrawCanvas', (data) => this.redrawCanvas(data));
-        this.socketManager.on('clearCanvas', () => this.clearCanvas());
+        this.socketManager.on('clearCanvas', (data) => this.handleClearCanvas(data)); // ИСПРАВЛЕНО
         this.socketManager.on('loadDrawing', (data) => {
-            this.localDrawingData = [...data]; // Сохраняем локальную копию
+            this.localDrawingData = [...data];
             this.loadDrawing(data);
         });
         this.socketManager.on('canvasSwitched', (data) => this.handleCanvasSwitch(data));
         
         this.initEventListeners();
     }
+
+    // ДОБАВЛЕН НОВЫЙ МЕТОД ДЛЯ ОБРАБОТКИ ОЧИСТКИ
+    handleClearCanvas(data) {
+        console.log('Очистка холста на клиенте', data);
+        
+        // Очищаем локальный массив данных
+        this.localDrawingData = [];
+        
+        // Очищаем canvas
+        this.clearCanvas();
+        
+        // Если нужно очистить только определенный холст, проверяем data.canvasId
+        if (data && data.canvasId && data.canvasId === this.currentCanvasId) {
+            this.localDrawingData = [];
+            this.clearCanvas();
+        } else if (!data) {
+            // Если данных нет, очищаем текущий холст
+            this.localDrawingData = [];
+            this.clearCanvas();
+        }
+    }    
+
+    clearCanvas() {
+        if (!this.ctx) return;
+        
+        console.log('Очистка canvas на клиенте');
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = 'white';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.userStrokes = {};
+    }    
     
     initEventListeners() {
         if (!this.canvas) return;
@@ -376,7 +403,7 @@ class CanvasManager {
         console.log('Received drawing:', data);
         this.drawShapePermanently(data);
         
-        // ДОБАВЛЯЕМ В ЛОКАЛЬНЫЙ МАССИВ при получении от других пользователей
+        // Добавляем в локальный массив
         this.localDrawingData.push(data);
         
         if (!this.userStrokes[data.userId]) {

@@ -19,6 +19,8 @@ class ToolManager {
         
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
+                console.log('Кнопка очистки нажата');
+                // ПРАВИЛЬНО: отправляем без данных
                 this.socketManager.send('clear-canvas');
             });
         }
@@ -47,7 +49,7 @@ class ToolManager {
             });
         });
         
-        // Добавляем навигацию по холстам
+        // Обновленные обработчики навигации
         const prevCanvasBtn = document.getElementById('prevCanvas');
         const nextCanvasBtn = document.getElementById('nextCanvas');
         

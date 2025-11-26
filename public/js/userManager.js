@@ -12,6 +12,9 @@ class UserManager {
         this.userStrokes = {};
         this.canvases = [];
         this.currentCanvasId = 1;
+        
+        // Индивидуальный текущий холст для пользователя
+        this.userCanvasId = 1;
     }
     
     init() {
@@ -36,18 +39,19 @@ class UserManager {
         });
         
         this.socketManager.on('canvasSwitched', (data) => {
+            // Обновляем данные холстов, но не меняем активный холст у других пользователей
             if (data.canvases) {
                 this.setCanvases(data.canvases);
-                this.currentCanvasId = data.canvasId;
-                // Обновляем доты после получения данных о холстах
+                this.userCanvasId = data.canvasId; // Обновляем только для текущего пользователя
+                
                 if (window.app && window.app.canvasManager) {
                     window.app.canvasManager.setCanvases(data.canvases);
                     window.app.canvasManager.setCurrentCanvasId(data.canvasId);
+                    window.app.canvasManager.redrawCanvas(data.drawingData);
                 }
             }
         });
 
-        // ДОБАВЛЕНО: Обработчик перерисовки при смене цвета
         this.socketManager.on('redrawCanvas', (data) => {
             if (window.app && window.app.canvasManager) {
                 window.app.canvasManager.redrawCanvas(data);
@@ -191,22 +195,64 @@ class UserManager {
         });
     }
     
+    
     switchToPrevCanvas() {
         if (this.canvases.length === 0) return;
         
-        const currentIndex = this.canvases.findIndex(c => c.id === this.currentCanvasId);
+        const currentIndex = this.canvases.findIndex(c => c.id === this.userCanvasId);
         const prevIndex = (currentIndex - 1 + this.canvases.length) % this.canvases.length;
-        this.socketManager.send('switch-canvas', this.canvases[prevIndex].id);
+        const prevCanvasId = this.canvases[prevIndex].id;
+        
+        this.userCanvasId = prevCanvasId;
+        this.socketManager.send('switch-canvas', prevCanvasId);
+        
+        // Локально обновляем доты
+        this.updateCanvasDots();
     }
     
     switchToNextCanvas() {
         if (this.canvases.length === 0) return;
         
-        const currentIndex = this.canvases.findIndex(c => c.id === this.currentCanvasId);
+        const currentIndex = this.canvases.findIndex(c => c.id === this.userCanvasId);
         const nextIndex = (currentIndex + 1) % this.canvases.length;
-        this.socketManager.send('switch-canvas', this.canvases[nextIndex].id);
+        const nextCanvasId = this.canvases[nextIndex].id;
+        
+        this.userCanvasId = nextCanvasId;
+        this.socketManager.send('switch-canvas', nextCanvasId);
+        
+        // Локально обновляем доты
+        this.updateCanvasDots();
     }
     
+    switchToCanvas(canvasId) {
+        if (this.canvases.some(canvas => canvas.id === canvasId)) {
+            this.userCanvasId = canvasId;
+            this.socketManager.send('switch-canvas', canvasId);
+            this.updateCanvasDots();
+        }
+    }
+    
+    updateCanvasDots() {
+        const canvasDots = document.getElementById('canvasDots');
+        if (!canvasDots) return;
+        
+        canvasDots.innerHTML = '';
+        
+        if (this.canvases && this.canvases.length > 0) {
+            this.canvases.forEach(canvas => {
+                const dot = document.createElement('div');
+                dot.className = 'canvas-dot';
+                if (canvas.id === this.userCanvasId) {
+                    dot.classList.add('active');
+                }
+                dot.addEventListener('click', () => {
+                    this.switchToCanvas(canvas.id);
+                });
+                canvasDots.appendChild(dot);
+            });
+        }
+    }
+        
     setCanvases(canvases) {
         this.canvases = canvases;
     }

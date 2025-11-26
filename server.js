@@ -88,8 +88,10 @@ io.on('connection', (socket) => {
         }
     });
     
+    // В обработчике connection измените обработчики:
     socket.on('switch-canvas', (canvasId) => {
-        canvasManager.switchCanvas(canvasId, io);
+        // Переключаем холст только для этого пользователя
+        canvasManager.switchCanvas(canvasId, socket);
     });
     
     socket.on('save-screenshot', async () => {
@@ -117,11 +119,12 @@ io.on('connection', (socket) => {
     });
     
     socket.on('erasing', (data) => {
-        canvasManager.eraseDrawing(data, io);
+        canvasManager.eraseDrawing(data, socket);
     });
     
     socket.on('clear-canvas', () => {
-        canvasManager.clearCanvas(io);
+        console.log('Очистка холста запрошена пользователем:', socket.id);
+        canvasManager.clearCanvas(socket);
     });
     
     socket.on('disconnect', () => {
