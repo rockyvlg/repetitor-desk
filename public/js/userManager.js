@@ -194,34 +194,88 @@ class UserManager {
             colorPalette.appendChild(colorOption);
         });
     }
-    
-    
-    switchToPrevCanvas() {
+     switchToPrevCanvas() {
+        if (this.isSwitching) {
+            console.log('Переключение уже выполняется, игнорируем вызов switchToPrevCanvas');
+            return;
+        }
+        
         if (this.canvases.length === 0) return;
         
+        this.isSwitching = true;
+        
+        console.log('До переключения назад:', {
+            текущий: this.userCanvasId,
+            холсты: this.canvases.map(c => c.id)
+        });
+        
         const currentIndex = this.canvases.findIndex(c => c.id === this.userCanvasId);
-        const prevIndex = (currentIndex - 1 + this.canvases.length) % this.canvases.length;
+        let prevIndex;
+        
+        if (currentIndex === 0) {
+            prevIndex = this.canvases.length - 1;
+        } else {
+            prevIndex = currentIndex - 1;
+        }
+        
         const prevCanvasId = this.canvases[prevIndex].id;
+        
+        console.log('Переключение НАЗАД:', {
+            текущий: this.userCanvasId,
+            текущийИндекс: currentIndex,
+            следующийИндекс: prevIndex,
+            следующийХолст: prevCanvasId
+        });
         
         this.userCanvasId = prevCanvasId;
         this.socketManager.send('switch-canvas', prevCanvasId);
         
-        // Локально обновляем доты
-        this.updateCanvasDots();
+        // Сбрасываем флаг после завершения
+        setTimeout(() => {
+            this.isSwitching = false;
+        }, 100);
     }
     
     switchToNextCanvas() {
+        if (this.isSwitching) {
+            console.log('Переключение уже выполняется, игнорируем вызов switchToNextCanvas');
+            return;
+        }
+        
         if (this.canvases.length === 0) return;
         
+        this.isSwitching = true;
+        
+        console.log('До переключения вперед:', {
+            текущий: this.userCanvasId,
+            холсты: this.canvases.map(c => c.id)
+        });
+        
         const currentIndex = this.canvases.findIndex(c => c.id === this.userCanvasId);
-        const nextIndex = (currentIndex + 1) % this.canvases.length;
+        let nextIndex;
+        
+        if (currentIndex === this.canvases.length - 1) {
+            nextIndex = 0;
+        } else {
+            nextIndex = currentIndex + 1;
+        }
+        
         const nextCanvasId = this.canvases[nextIndex].id;
+        
+        console.log('Переключение ВПЕРЕД:', {
+            текущий: this.userCanvasId,
+            текущийИндекс: currentIndex,
+            следующийИндекс: nextIndex,
+            следующийХолст: nextCanvasId
+        });
         
         this.userCanvasId = nextCanvasId;
         this.socketManager.send('switch-canvas', nextCanvasId);
         
-        // Локально обновляем доты
-        this.updateCanvasDots();
+        // Сбрасываем флаг после завершения
+        setTimeout(() => {
+            this.isSwitching = false;
+        }, 100);
     }
     
     switchToCanvas(canvasId) {
